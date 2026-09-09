@@ -116,6 +116,8 @@ Admin image uploads accept JPEG, PNG, and WebP up to 3 MB. Images can also use H
 
 The app uses Node route handlers and Supabase HTTP APIs. No local filesystem database or background worker is required in production.
 
+Supabase configuration is read at request time through the shared server-only `src/lib/supabase-config.ts`, including catalog loading, checkout readiness, admin authentication and session refresh. Only readiness booleans reach the login/checkout components. If both buttons report that the store is disconnected, the familiar catalog may be the built-in preview catalog. Check the environment values on the **active deployment**, not only the project settings, and create a new deployment after changing them. Keep `NEXT_PUBLIC_SITE_URL` set to the exact production HTTPS origin; origin validation remains enforced.
+
 ## Verification
 
 ```sh
