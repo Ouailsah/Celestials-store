@@ -5,11 +5,7 @@ import { useLanguage } from '@/components/i18n';
 /** One delivery policy shared by product accordions and Contact. */
 export function DeliveryInformation() {
   const { t } = useLanguage();
-  return <p>{t('Algeria-wide shipping via Zr Express')}<br /><br />
-    {t('Home delivery: 500 - 1,600 DA depending on wilaya')}<br />
-    {t('Stop desk: 370 - 1,120 DA depending on wilaya')}<br />
-    {t('Delivery time: 2-5 business days')}
-  </p>;
+  return <p>{t('For an actual purchase, confirm delivery availability, charges and timing directly with the brand. This concept does not establish official shipping terms.')}</p>;
 }
 
 /** Shared by every product; delivery information never comes from product data. */
