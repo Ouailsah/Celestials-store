@@ -1,0 +1,10 @@
+export type Variant = { id: string; product_id: string; size: string; color: string; color_hex: string; stock: number };
+export type SizeGuide = { image: string; alt: string };
+export type OutfitComponent = { product_id: string; thumbnail?: string; size_guide?: SizeGuide; product: Product };
+export type Product = { id: string; slug: string; name: string; category: string; price: number; original_price?: number | null; description: string; images: string[]; badge: string | null; active: boolean; created_at?: string; product_variants: Variant[]; size_guide?: SizeGuide | null; outfit?: { original_price: number; components: OutfitComponent[] } };
+export type CartComponent = { variantId: string; productId: string; name: string; size: string; color: string; stock: number };
+export type CartItem = { variantId: string; productId: string; slug: string; name: string; image: string; size: string; color: string; price: number; quantity: number; stock: number; components?: CartComponent[] };
+export const money = (value: number) => `${new Intl.NumberFormat('en-DZ').format(value)} DZD`;
+export const SHIPPING = 600;
+export const FREE_SHIPPING = 15000;
+export const shippingFor = (subtotal: number) => subtotal >= FREE_SHIPPING ? 0 : SHIPPING;

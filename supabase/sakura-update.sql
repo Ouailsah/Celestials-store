@@ -1,0 +1,7 @@
+-- Add Sakura to an existing catalog without changing any other product.
+begin;
+insert into public.products(id,slug,name,category,price,description,images,badge,active) values('10000000-0000-4000-8000-000000000008','sakura-long-sleeve','Sakura Long Sleeve','Tops',3800,'Sakura Long Sleeve — a relaxed statement piece inspired by Japanese aesthetics, featuring a detailed cherry blossom graphic across the back with contrasting black calligraphy. The clean white base and oversized silhouette keep the front minimal while allowing the artwork to define the piece. Designed for an effortless streetwear fit and easy everyday layering.',array['/products/sakura-long-sleeve/01-cover.jpeg','/products/sakura-long-sleeve/02-rear.jpeg','/products/sakura-long-sleeve/03-detail.jpeg','/products/sakura-long-sleeve/04-models.jpeg','/products/sakura-long-sleeve/05-angled.jpeg'],'NEW ARRIVAL',true) on conflict(id) do nothing;
+insert into public.product_variants(id,product_id,size,color,color_hex,stock) values('20000000-0000-4000-8000-000000000800','10000000-0000-4000-8000-000000000008','S','White','#eeede5',0) on conflict(id) do nothing;
+insert into public.product_variants(id,product_id,size,color,color_hex,stock) values('20000000-0000-4000-8000-000000000801','10000000-0000-4000-8000-000000000008','M-L','White','#eeede5',0) on conflict(id) do nothing;
+insert into public.product_variants(id,product_id,size,color,color_hex,stock) values('20000000-0000-4000-8000-000000000802','10000000-0000-4000-8000-000000000008','XL','White','#eeede5',0) on conflict(id) do nothing;
+commit;

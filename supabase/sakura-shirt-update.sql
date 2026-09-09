@@ -1,0 +1,7 @@
+-- Add only Sakura Shirt. Existing products and inventory remain unchanged.
+begin;
+insert into public.products(id,slug,name,category,price,description,images,badge,active) values('10000000-0000-4000-8000-000000000009','sakura-shirt','Sakura Shirt','Tops',3700,'Sakura Shirt — a relaxed oversized statement piece featuring a Japanese-inspired cherry blossom graphic flowing across the upper back and shoulder. The clean white base keeps the silhouette minimal while the black and soft pink Sakura artwork creates the focal point. Designed with a loose, effortless fit for everyday streetwear styling.',array['/products/sakura-shirt/01-cover.jpeg','/products/sakura-shirt/02-rear.jpeg','/products/sakura-shirt/03-side.jpeg','/products/sakura-shirt/04-front.jpeg'],'NEW ARRIVAL',true) on conflict(id) do nothing;
+insert into public.product_variants(id,product_id,size,color,color_hex,stock) values('20000000-0000-4000-8000-000000000900','10000000-0000-4000-8000-000000000009','S','White','#eeede5',0) on conflict(id) do nothing;
+insert into public.product_variants(id,product_id,size,color,color_hex,stock) values('20000000-0000-4000-8000-000000000901','10000000-0000-4000-8000-000000000009','M-L','White','#eeede5',0) on conflict(id) do nothing;
+insert into public.product_variants(id,product_id,size,color,color_hex,stock) values('20000000-0000-4000-8000-000000000902','10000000-0000-4000-8000-000000000009','XL','White','#eeede5',0) on conflict(id) do nothing;
+commit;

@@ -1,0 +1,75 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { PGlite } from '@electric-sql/pglite';
+import { imageUrl, productSchema, outfitSchema } from '../src/lib/validation';
+import { resolveOutfits, type OutfitDefinition } from '../src/lib/outfits';
+import { seedProducts } from '../src/lib/catalog';
+import { filterShopProducts } from '../src/lib/shop-filters';
+import type { Product } from '../src/lib/types';
+
+test('admin validation accepts existing assets and rejects unsafe URLs, invalid prices and duplicate images',()=>{
+ for(const url of ['/products/sakura-shirt/01-cover.jpeg','https://example.com/photo.jpg'])assert.equal(imageUrl.safeParse(url).success,true);
+ for(const url of ['javascript:alert(1)','//evil.com/a','/products/../secret','https://user:password@example.com/a','http://example.com/a'])assert.equal(imageUrl.safeParse(url).success,false);
+ const p={...seedProducts[2],original_price:4000};assert.equal(productSchema.safeParse(p).success,true);
+ assert.equal(productSchema.safeParse({...p,original_price:1}).success,false);
+ assert.equal(productSchema.safeParse({...p,images:[p.images[0],p.images[0]]}).success,false);
+ assert.equal(productSchema.safeParse({...p,category:'Outfits'}).success,false);
+});
+
+test('admin catalog to storefront to COD order survives a database restart',async()=>{
+ const directory=mkdtempSync(join(tmpdir(),'celestials-admin-'));let db=new PGlite(directory);
+ try {
+  await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create schema storage;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid primary key,bucket_id text);alter table storage.objects enable row level security;grant usage on schema public,auth to anon,authenticated,service_role;create function public.gen_random_bytes(n integer) returns bytea language sql as $$ select decode(replace(gen_random_uuid()::text,'-',''),'hex') $$;`);
+  for(const migration of ['001_store','002_outfits'])await db.exec(readFileSync(`supabase/migrations/${migration}.sql`,'utf8').replace('create extension if not exists pgcrypto;',''));
+  await db.exec(readFileSync('supabase/seed.sql','utf8'));await db.exec(readFileSync('supabase/outfits-seed.sql','utf8'));
+  const before=(await db.query('select id,name,price,images from products order by id')).rows;
+  await db.exec(readFileSync('supabase/migrations/003_admin_management.sql','utf8'));
+  assert.deepEqual((await db.query('select id,name,price,images from products order by id')).rows,before);
+  const owner=crypto.randomUUID();await db.query('insert into auth.users values($1)',[owner]);await db.query('insert into admin_users values($1)',[owner]);
+  const top={...seedProducts[2],id:crypto.randomUUID(),slug:'admin-test-top',name:'Admin Test Top',price:2100,original_price:2500,size_guide:{image:'/products/sakura-long-sleeve/size-chart.jpeg',alt:'Actual supplied chart'},product_variants:[{id:crypto.randomUUID(),size:'XL',color:'White',color_hex:'#ffffff',stock:8}]};
+  const bottom={...top,id:crypto.randomUUID(),slug:'admin-test-bottom',name:'Admin Test Bottom',category:'Bottoms',price:3000,original_price:null,product_variants:[{id:crypto.randomUUID(),size:'M-L',color:'Black',color_hex:'#222222',stock:8}]};
+  const outfit={id:crypto.randomUUID(),slug:'admin-test-outfit',name:'Admin Test Outfit',description:'A new outfit with independent product sizes.',price:4500,original_price:5100,images:[top.images[0],top.images[1]],badge:'NEW ARRIVAL',active:true,components:[{product_id:top.id},{product_id:bottom.id}]};
+  const save=(name:string,value:unknown)=>db.query(`select public.${name}($1::jsonb)`,[JSON.stringify(value)]);
+  await db.exec('set role anon');await assert.rejects(save('save_product',top),/permission denied/);await assert.rejects(save('save_outfit',outfit),/permission denied/);
+  await db.exec('set role authenticated');await assert.rejects(save('save_product',top),/Unauthorized/);await assert.rejects(save('save_outfit',outfit),/Unauthorized/);
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)",[owner]);
+  await save('save_product',productSchema.parse(top));await save('save_product',productSchema.parse(bottom));
+  await save('save_outfit',outfitSchema.parse(outfit));
+  await assert.rejects(save('save_outfit',{...outfit,components:[{product_id:top.id},{product_id:seedProducts[0].id}]}),/one Top and one Bottom/);
+  await assert.rejects(save('save_product',{...top,slug:outfit.slug}),/Slug already used/);
+  await assert.rejects(save('save_product',{...top,category:'Bottoms'}),/changing category/);
+  await save('save_product',{...top,name:'Edited Admin Top',price:2200});
+  await save('save_outfit',{...outfit,name:'Edited Admin Outfit',price:4400,images:[outfit.images[1],outfit.images[0]]});
+  await db.exec('reset role');
+  const catalog=(await db.query<Product>(`select p.*,coalesce((select jsonb_agg(v) from product_variants v where v.product_id=p.id),'[]') as product_variants from products p where active`)).rows;
+  const resolved=resolveOutfits(catalog,(await db.query<OutfitDefinition>('select * from outfits')).rows);
+  assert.equal(resolved.find(o=>o.id===outfit.id)?.images[0],outfit.images[1]);
+  const all=[...catalog,...resolved];
+  for(const category of ['All pieces','Outfits'])assert.ok(filterShopProducts(all,new URLSearchParams({category})).some(p=>p.id===outfit.id));
+  assert.ok(filterShopProducts(all,new URLSearchParams({category:'Tops'})).some(p=>p.id===top.id));
+  const orderKey=crypto.randomUUID(),customer={name:'Admin Flow Customer',phone:'0555123456',wilaya:'16 Alger',commune:'Hydra',address:'12 Test Street'};
+  await db.exec('set role service_role');
+  await db.query('select public.place_order($1,$2::jsonb,$3::jsonb)',[orderKey,JSON.stringify(customer),JSON.stringify([{variantId:top.product_variants[0].id,quantity:1},{outfitId:outfit.id,variantIds:[top.product_variants[0].id,bottom.product_variants[0].id],quantity:2}])]);
+  await db.exec('reset role');
+  const order=(await db.query<{id:string;total:number;subtotal:number;shipping:number}>('select * from orders where idempotency_key=$1',[orderKey])).rows[0];
+  assert.equal(order.subtotal,11000);assert.equal(order.shipping,600);assert.equal(order.total,11600);
+  assert.equal((await db.query('select * from order_items where order_id=$1',[order.id])).rows.length,2);
+  const sizes=(await db.query<{size:string}>('select size from order_item_components order by size')).rows.map(r=>r.size);assert.deepEqual(sizes,['M-L','XL']);
+  assert.equal((await db.query<{stock:number}>('select stock from product_variants where id=$1',[top.product_variants[0].id])).rows[0].stock,5);
+  await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[owner]);
+  await assert.rejects(db.query('select public.delete_outfit($1)',[outfit.id]),/open orders/);
+  await db.query("select public.set_order_status($1,'confirmed')",[order.id]);
+  await db.close();db=new PGlite(directory);
+  assert.equal((await db.query<{status:string}>('select status from orders where id=$1',[order.id])).rows[0].status,'confirmed');
+  assert.equal((await db.query<{name:string}>('select name from products where id=$1',[top.id])).rows[0].name,'Edited Admin Top');
+  assert.equal((await db.query<{price:number}>('select price from outfits where id=$1',[outfit.id])).rows[0].price,4400);
+  await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[owner]);
+  await db.query("select public.set_order_status($1,'cancelled')",[order.id]);await db.query("select public.set_order_status($1,'cancelled')",[order.id]);
+  assert.equal((await db.query<{stock:number}>('select stock from product_variants where id=$1',[top.product_variants[0].id])).rows[0].stock,8);
+  await db.query('select public.delete_outfit($1)',[outfit.id]);await db.query('select public.delete_product($1)',[top.id]);
+  assert.equal((await db.query('select * from order_item_components')).rows.length,2);
+ } finally {await db.close();assert.ok(directory.startsWith(join(tmpdir(),'celestials-admin-')));rmSync(directory,{recursive:true,force:true});}
+});

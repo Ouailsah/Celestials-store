@@ -1,0 +1,8 @@
+-- Add only the navy shirt; existing products remain unchanged.
+begin;
+insert into public.products(id,slug,name,category,price,description,images,badge,active) values('10000000-0000-4000-8000-000000000010','slim-fit-shirt-blue-navy','Slim Fit Shirt Blue Navy','Tops',2000,'A clean everyday essential designed with a close, streamlined silhouette. Finished in a deep navy tone, this shirt delivers a minimal and versatile look with a sharp fitted shape. Its simple construction makes it easy to style on its own or combine with other pieces for a clean everyday outfit.',array['/products/slim-fit-shirt-blue-navy/01-cover.jpeg','/products/slim-fit-shirt-blue-navy/02-front.jpeg','/products/slim-fit-shirt-blue-navy/03-back.jpeg'],'NEW ARRIVAL',true) on conflict(id) do nothing;
+insert into public.product_variants(id,product_id,size,color,color_hex,stock) values('20000000-0000-4000-8000-000000001000','10000000-0000-4000-8000-000000000010','S','Navy','#151c29',0) on conflict(id) do nothing;
+insert into public.product_variants(id,product_id,size,color,color_hex,stock) values('20000000-0000-4000-8000-000000001001','10000000-0000-4000-8000-000000000010','M','Navy','#151c29',0) on conflict(id) do nothing;
+insert into public.product_variants(id,product_id,size,color,color_hex,stock) values('20000000-0000-4000-8000-000000001002','10000000-0000-4000-8000-000000000010','L','Navy','#151c29',0) on conflict(id) do nothing;
+insert into public.product_variants(id,product_id,size,color,color_hex,stock) values('20000000-0000-4000-8000-000000001003','10000000-0000-4000-8000-000000000010','XL','Navy','#151c29',0) on conflict(id) do nothing;
+commit;

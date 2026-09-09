@@ -1,0 +1,12 @@
+export const isCursedShirt = (slug: string) => slug === 'cursed-blood-manipulation-shirt';
+export const isSakura = (slug: string) => slug === 'sakura-long-sleeve' || slug === 'sakura-shirt';
+export const isNavyShirt = (slug: string) => slug === 'slim-fit-shirt-blue-navy';
+export const navyCardDescription = 'T-Shirt · Slim fit';
+export const isSakuraJeans = (slug: string) => slug === 'sakura-jeans';
+export const jeansCardDescription = 'Wide fit · Sakura detail';
+export const jeansSizeChart = '/products/sakura-jeans/size-chart.jpeg';
+export const hasCampaignDetails = (slug: string) => isCursedShirt(slug) || isSakura(slug) || isNavyShirt(slug) || isSakuraJeans(slug);
+export const retiredBottomSlugs = ['everyday-cargo-pant', 'washed-denim-01'];
+export const sakuraSizeChart = '/products/sakura-long-sleeve/size-chart.jpeg';
+export const shirtCardDescription = 'Oversized fit · Signature back graphic';
+export const retiredTopSlugs = ['heavyweight-hoodie', 'studio-oversized-tee', 'essential-zip-jacket', 'off-duty-crewneck'];
