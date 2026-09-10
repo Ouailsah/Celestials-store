@@ -61,7 +61,7 @@ export function ProductDetail({
               setSize('');
               setQuantity(1);
               setMessage('');
-            }} />)}</div></div><div className="variant-block"><div className="field-heading">{t("SELECT SIZE")}<Link href="/contact#sizing">{t("Size guide ↗")}</Link></div><div className="size-options">{p.product_variants.filter(v => v.color === color).map(v => <button key={v.id} disabled={v.stock === 0} aria-pressed={size === v.size} className={size === v.size ? 'selected' : ''} onClick={() => {
+            }} />)}</div></div><div className="variant-block"><div className="field-heading">{t("SELECT SIZE")}<Link href="/contact#sizing" className="size-guide-link">{t("Size guide")}<ArrowUpRight size={13} strokeWidth={1.4} aria-hidden="true" /></Link></div><div className="size-options">{p.product_variants.filter(v => v.color === color).map(v => <button key={v.id} disabled={v.stock === 0} aria-pressed={size === v.size} className={size === v.size ? 'selected' : ''} onClick={() => {
               setSize(v.size);
               setQuantity(1);
               setMessage('');
